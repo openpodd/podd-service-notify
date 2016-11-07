@@ -1,0 +1,4 @@
+package: github.com/openpodd/podd-service-notify/fridaynotice
+import:
+- package: github.com/lib/pq
+- package: github.com/alexjlockwood/gcm
