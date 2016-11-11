@@ -113,6 +113,7 @@ func SendNotification(sender Sender, regIdsChunks [][]string) {
 			"reportId": "",
 		}
 		message := gcm.NewMessage(data, regIds...)
+		message.TimeToLive = 604800 // 60 * 60 * 24 * 7
 
 		response, err := sender.Send(message, 3)
 		if err != nil {
