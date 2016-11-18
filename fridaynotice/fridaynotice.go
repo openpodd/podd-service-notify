@@ -42,7 +42,7 @@ func GetVolunteers() []*User {
 	users := make([]*User, 0)
 
 	db, _ := GetDB()
-	rows, err := db.Query("SELECT username, gcm_reg_id FROM accounts_user u join accounts_userdevice d on u.id = d.user_id WHERE username LIKE 'podd%' AND gcm_reg_id != ''")
+	rows, err := db.Query("SELECT username, gcm_reg_id FROM accounts_user u join accounts_userdevice d on u.id = d.user_id WHERE username LIKE 'podd%' AND gcm_reg_id != '' AND u.domain_id = 1")
 	if err != nil {
 		log.Printf("Error fetching volunteers %v", err)
 		return users
