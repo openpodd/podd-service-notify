@@ -16,7 +16,8 @@ var (
 	nonceFlag = flag.String("nonce", "3a0117f29cd4261bab54b0f1", "Nonce")
 	redisHostFlag = flag.String("redis.host", "127.0.0.1", "Redis host")
 	redisPortFlag = flag.Int("redis.port", 6379, "Redis port")
-	poddAPIURL = flag.String("api.url", "http://localhost:8000/reports/", "PODD API URL")
+	poddAPIURL = flag.String("api.url", "http://localhost:8000", "PODD API URL")
+	poddSharedKey = flag.String("api.sharedKey", "must-override-in-settings-local.py", "PODD Shared Key")
 )
 
 type RedisCache struct {
@@ -41,7 +42,8 @@ func (c ZeroReportCallback) Execute(payload PoddService.Payload) bool {
 	date := time.Now().Local()
 	zeroReportJSON := fmt.Sprintf(zeroReport, date.Format("2006-01-02"), date.Format(time.RFC3339), date.Unix(), payload.RefNo)
 
-	req, err := http.NewRequest("POST", *poddAPIURL, strings.NewReader(zeroReportJSON))
+	url := fmt.Sprintf("%s/reports", *poddAPIURL)
+	req, err := http.NewRequest("POST", url, strings.NewReader(zeroReportJSON))
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -51,6 +53,24 @@ func (c ZeroReportCallback) Execute(payload PoddService.Payload) bool {
 	resp, err := client.Do(req)
 	fmt.Println(resp)
 	return resp.StatusCode == http.StatusCreated && err == nil
+}
+
+type VerifyReportCallback struct {}
+func (c VerifyReportCallback) Execute(payload PoddService.Payload) bool {
+	client := &http.Client{}
+
+	url := fmt.Sprintf("%s/report/%d/protect-verify-case/%s/", *poddAPIURL, payload.Id, *poddSharedKey)
+	req, err := http.NewRequest("POST", url, nil)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		fmt.Println("Verify error", err)
+		return false
+	}
+	return resp.StatusCode == http.StatusOK && err == nil
 }
 
 func (r RedisCache) Exists(refNo string) bool {
@@ -89,5 +109,6 @@ func main() {
 	}
 
 	http.HandleFunc("/report/zero/", server.ZeroReportHandler(ZeroReportCallback{}))
+	http.HandleFunc("/report/verify/", server.VerifyReportHandler(VerifyReportCallback{}))
 	http.ListenAndServe(":9800", nil)
 }

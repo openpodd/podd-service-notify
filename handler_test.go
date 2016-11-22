@@ -86,3 +86,38 @@ func TestZeroReportHandler(t *testing.T) {
 	}
 }
 
+func TestServer_VerifyReportHandler(t *testing.T) {
+	server := Server{
+		Cipher: Cipher{
+			Key: "1234567890123456",
+			Nonce: "3a0117f29cd4261bab54b0f1",
+		},
+		Cache: MemoryCache{
+			Map: make(map[string]string),
+		},
+	}
+
+	payload, _ := CreatePayload("", 160831, time.Second * 1000)
+	payloadStr, _ := server.Cipher.EncodePayload(payload)
+	fmt.Println(payloadStr)
+
+	req, err := http.NewRequest("GET", "/report/verify/" + payloadStr, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rr := httptest.NewRecorder()
+	handler := http.HandlerFunc(server.VerifyReportHandler(nil))
+
+	handler.ServeHTTP(rr, req)
+
+	if status := rr.Code; status != http.StatusOK {
+		t.Errorf("handler returned wrong status code: got %v want %v", status, http.StatusOK)
+	}
+
+	handler.ServeHTTP(rr, req)
+
+	if status := rr.Code; status != http.StatusOK {
+		t.Errorf("handler returned wrong status code: got %v want %v", status, http.StatusOK)
+	}
+}
