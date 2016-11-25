@@ -32,8 +32,10 @@ func ValidateRefNo(cache RefNoCache, refNo string) bool {
 
 func (s Server) ZeroReportHandler(callback Callback) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		
 		urlPart := strings.Split(r.URL.Path, "/")
-		payload, err := s.Cipher.DecodePayload(urlPart[len(urlPart)-1])
+		payload, err := s.Cipher.DecodePayload(urlPart[len(urlPart) - 1])
 		if err != nil {
 			fmt.Println(err)
 			w.WriteHeader(http.StatusBadRequest)
@@ -66,13 +68,14 @@ func (s Server) ZeroReportHandler(callback Callback) func(http.ResponseWriter, *
 		}
 
 		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("ขอบคุณสำหรับการรายงานค่ะ"))
 	}
 }
 
 func (s Server) VerifyReportHandler(callback Callback) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		urlPart := strings.Split(r.URL.Path, "/")
-		payload, err := s.Cipher.DecodePayload(urlPart[len(urlPart)-1])
+		payload, err := s.Cipher.DecodePayload(urlPart[len(urlPart) - 1])
 		if err != nil {
 			fmt.Println(err)
 			w.WriteHeader(http.StatusBadRequest)

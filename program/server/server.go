@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"time"
 	"strings"
-	"sync"
 	"encoding/json"
 	"log"
 	"database/sql"
@@ -39,7 +38,7 @@ const zeroReport = `
   "date": "%s",
   "reportTypeId": 0,
   "reportId": %d,
-  "guid": "%s",
+  "guid": "webcontent-%s",
   "negative": false
 }
 `
@@ -52,14 +51,15 @@ const gcmTemplate = `
 โปรดยืนยันว่าเป็นรายงานจริง
 `
 
-type ZeroReportCallback struct {}
+type ZeroReportCallback struct{}
+
 func (c ZeroReportCallback) Execute(payload PoddService.Payload) bool {
 	client := &http.Client{}
 
 	date := time.Now().Local()
 	zeroReportJSON := fmt.Sprintf(zeroReport, date.Format("2006-01-02"), date.Format(time.RFC3339), date.Unix(), payload.RefNo)
 
-	url := fmt.Sprintf("%s/reports", *poddAPIURL)
+	url := fmt.Sprintf("%s/reports/", *poddAPIURL)
 	req, err := http.NewRequest("POST", url, strings.NewReader(zeroReportJSON))
 	if err != nil {
 		fmt.Println(err)
@@ -72,7 +72,8 @@ func (c ZeroReportCallback) Execute(payload PoddService.Payload) bool {
 	return resp.StatusCode == http.StatusCreated && err == nil
 }
 
-type VerifyReportCallback struct {}
+type VerifyReportCallback struct{}
+
 func (c VerifyReportCallback) Execute(payload PoddService.Payload) bool {
 	client := &http.Client{}
 
@@ -102,7 +103,7 @@ type Report struct {
 	FormData                  FormData `json:"formData"`
 	AdministrationAreaAddress string   `json:"administrationAreaAddress"`
 	FormDataExplanation       string   `json:"formDataExplanation"`
-	IsStateChanged 			  bool     `json:"isStateChanged"`
+	IsStateChanged            bool     `json:"isStateChanged"`
 	StateCode                 string   `json:"stateCode"`
 	CreatedById               int      `json:"createdById"`
 }
@@ -201,23 +202,24 @@ func main() {
 		Cache: redisCache,
 	}
 
-	db, err := sql.Open("postgres", *dbDSN)
-	if err != nil {
-		panic(err)
-	}
-	sender := PoddService.NewSender(*gcmAPIKey)
-
-	var wg sync.WaitGroup
-	wg.Add(1)
-
-	go func() {
-		defer wg.Done()
-		doSubscribeReport(conn, db, sender)
-	}()
+	// TODO: FIX THIS, Now error occured and make whole request stop.
+	//db, err := sql.Open("postgres", *dbDSN)
+	//if err != nil {
+	//	panic(err)
+	//}
+	//sender := PoddService.NewSender(*gcmAPIKey)
+	//
+	//var wg sync.WaitGroup
+	//wg.Add(1)
+	//
+	//go func() {
+	//	defer wg.Done()
+	//	doSubscribeReport(conn, db, sender)
+	//}()
 
 	http.HandleFunc("/report/zero/", server.ZeroReportHandler(ZeroReportCallback{}))
 	http.HandleFunc("/report/verify/", server.VerifyReportHandler(VerifyReportCallback{}))
 	http.ListenAndServe(":9800", nil)
 
-	wg.Wait()
+	//wg.Wait()
 }
