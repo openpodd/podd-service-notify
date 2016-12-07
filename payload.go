@@ -10,18 +10,21 @@ import (
 	"strconv"
 	"io"
 	"crypto/rand"
+	"net/url"
 )
 
 type Cipher struct {
-	Key string
+	Key   string
 	Nonce string
 }
 
 type Payload struct {
-	Token string
+	Token  string
 	Expire time.Time
-	Id int
-	RefNo string
+	Id     int
+	RefNo  string
+
+	Form   url.Values
 }
 
 func (c Cipher) getGCMBlock() (cipher.AEAD, []byte, error) {
