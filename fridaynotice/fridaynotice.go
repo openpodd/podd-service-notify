@@ -190,7 +190,6 @@ func CreateGCMMessageTextForUser(user *User) string {
 func SendNotificationToUser(sender Sender, user *User) {
 	messageId := user.Username + "-" + strconv.Itoa(rand.Int())
 
-	println(CreateGCMMessageTextForUser(user))
 	data := GCMMessage{
 		"id": messageId,
 		"message": CreateGCMMessageTextForUser(user),
@@ -198,7 +197,6 @@ func SendNotificationToUser(sender Sender, user *User) {
 		"reportId": "",
 	}
 	regIds := []string{user.Device.RegId}
-	println(regIds, data)
 	message := gcm.NewMessage(data, regIds...)
 	message.TimeToLive = 604800 // 60 * 60 * 24 * 7
 
