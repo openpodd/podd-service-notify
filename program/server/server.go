@@ -132,7 +132,7 @@ func (c ZeroReportCallback) Execute(payload PoddService.Payload) (string, bool) 
 		return "", false
 	}
 
-	if resp.StatusCode == http.StatusOK {
+	if resp.StatusCode == http.StatusCreated {
 		return ThankyouTemplate, true
 	} else {
 		return "", false
