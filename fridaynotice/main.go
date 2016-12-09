@@ -4,6 +4,7 @@ import (
 	"os"
 	"flag"
 	"github.com/vharitonsky/iniflags"
+	"strings"
 )
 
 const chunkSize = 100
@@ -16,10 +17,17 @@ var (
 	nonce = flag.String("nonce", "", "Nonce")
 	sharedKey = flag.String("sharedKey", "SHARED_KEY", "Shared key")
 	returnServerUrl = flag.String("returnServerUrl", "http://localhost:9110/report/zero/", "Return server url")
+	messagesFlag = flag.String("messages", "อาสาผ่อดีดีตรวจสอบเหตุการณ์ในพื้นที่ของตนเอง ถ้าไม่มีสิ่งใดผิดปกติ กรุณาส่งรายงานไม่พบเหตุการณ์ผิดปกติมายังโครงการผ่อดีดีด้วย ขอบคุณค่ะ", "Set of messages to send separated by ### (triple sharp)")
+	debugFlag = flag.Bool("debug", false, "Debug flag")
+	testUsername = flag.String("testUsername", "podd.demo", "Test username")
 )
+
+var messages []string
 
 func init() {
 	iniflags.Parse()
+
+	messages = strings.Split(*messagesFlag, "###")
 
 	if *dsn == defaultDSN && os.Getenv("FRIDAYNOTICE_DSN") != "" {
 		*dsn = os.Getenv("FRIDAYNOTICE_DSN")
@@ -31,7 +39,12 @@ func init() {
 }
 
 func main() {
-	users := GetVolunteers()
+	var users []*User
+	if *debugFlag {
+		users = GetVolunteers(*testUsername)
+	} else {
+		users = GetVolunteers("")
+	}
 
 	if gcmApiKey == nil || *gcmApiKey == "" {
 		println("Error: Required GCM API Key")

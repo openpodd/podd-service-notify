@@ -32,10 +32,6 @@ type User struct {
 
 type GCMMessage map[string]interface{}
 
-var messages = []string{
-	"อาสาผ่อดีดีตรวจสอบเหตุการณ์ในพื้นที่ของตนเอง ถ้าไม่มีสิ่งใดผิดปกติ กรุณาส่งรายงานไม่พบเหตุการณ์ผิดปกติมายังโครงการผ่อดีดีด้วย ขอบคุณค่ะ	",
-}
-
 const buttonTemplates = `
 กดลิ้งค์เพื่อรายงาน <p><button id="submit-link" onclick="submit(); return false;" style="border:none;padding: 10px;color: #fff;margin: 15px 0 0;font-size: 18px;background-color: #1C95EF;"style="border:none;padding: 10px;color: #fff;margin: 15px 0 0;font-size: 18px;background-color: #1C95EF;">ไม่พบเหตุผิดปกติ</button></p>
 <script>
@@ -61,16 +57,23 @@ func GetDB() (*sql.DB, error) {
 	return sql.Open("postgres", *dsn)
 }
 
-func GetVolunteers() []*User {
+func GetVolunteers(username string) []*User {
 	users := make([]*User, 0)
 
-	db, _ := GetDB()
-	rows, err := db.Query(`
+	queryString := `
 	SELECT username, gcm_reg_id, t.key
 	FROM accounts_user u
 	     join accounts_userdevice d on u.id = d.user_id
 	     join authtoken_token t on u.id = t.user_id
-	WHERE username LIKE 'podd%' AND gcm_reg_id != '' AND u.domain_id = 1`)
+	WHERE gcm_reg_id != '' AND u.domain_id = 1`
+	if username != "" {
+		queryString += fmt.Sprintf(" AND username = '%s' ", username)
+	} else {
+		queryString += " AND username LIKE 'podd%' "
+	}
+
+	db, _ := GetDB()
+	rows, err := db.Query(queryString)
 	if err != nil {
 		log.Printf("Error fetching volunteers %v", err)
 		return users
@@ -187,6 +190,7 @@ func CreateGCMMessageTextForUser(user *User) string {
 func SendNotificationToUser(sender Sender, user *User) {
 	messageId := user.Username + "-" + strconv.Itoa(rand.Int())
 
+	println(CreateGCMMessageTextForUser(user))
 	data := GCMMessage{
 		"id": messageId,
 		"message": CreateGCMMessageTextForUser(user),
@@ -194,6 +198,7 @@ func SendNotificationToUser(sender Sender, user *User) {
 		"reportId": "",
 	}
 	regIds := []string{user.Device.RegId}
+	println(regIds, data)
 	message := gcm.NewMessage(data, regIds...)
 	message.TimeToLive = 604800 // 60 * 60 * 24 * 7
 
