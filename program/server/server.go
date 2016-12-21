@@ -196,6 +196,7 @@ type Report struct {
 	IsStateChanged            bool     `json:"isStateChanged"`
 	StateCode                 string   `json:"stateCode"`
 	CreatedById               int      `json:"createdById"`
+	TestFlag                  bool     `json:"testFlag"`
 }
 
 func (r RedisCache) Exists(refNo string) bool {
@@ -233,7 +234,8 @@ func doSubscribeReport(conn redis.Conn, db *sql.DB, sender PoddService.Sender) {
 			log.Println("Got new report")
 			log.Printf("  / reportId: %d, animalType: %s, stateCode: %s", report.Id, report.FormData.AnimalType, report.StateCode)
 
-			if report.IsStateChanged &&
+			if !report.TestFlag &&
+				report.IsStateChanged &&
 				report.ParentId == 0 &&
 				report.ReportTypeId == *acceptedReportTypeId &&
 				report.StateCode == *acceptedReportStateCode {

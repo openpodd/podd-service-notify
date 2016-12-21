@@ -29,6 +29,7 @@ type Report struct {
 	CreatedByContact          string   `json:"createdByContact"`
 	IsPublic                  bool     `json:"isPublic"`
 	IsStateChanged            bool     `json:"isStateChanged"`
+	TestFlag                  bool     `json:"testFlag"`
 }
 
 type FormData struct {
@@ -120,9 +121,9 @@ func main() {
 				log.Fatal(err)
 			}
 
-			if report.IsStateChanged &&
+			if !report.TestFlag &&
+				report.IsStateChanged &&
 				report.ParentId == 0 &&
-				report.ReportTypeId == viper.GetInt("ReportTypeId") &&
 				report.StateCode == viper.GetString("ReportStateCode") &&
 				report.IsPublic != true {
 
