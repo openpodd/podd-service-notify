@@ -1,0 +1,20 @@
+{
+  "PODD_POSTGRES": "postgres://postgres@localhost/postgres?sslmode=disable",
+  "PODD_CALLBACK_URL": "",
+  "PODD_API_TOKEN": "",
+  "GCM_API_KEY": "",
+  "RedisAddr": "127.0.0.1:6379",
+  "RedisDB": 0,
+  "ReportTypeId": 1,
+  "ReportStateCode": "3",
+  "RabiesNetUsername": "",
+  "RabiesNetPassword": "",
+  "LOG_TO_EMAIL": false,
+  "SMTP_HOST": "",
+  "SMTP_PORT": 25,
+  "SMTP_USERNAME": "",
+  "SMTP_PASSWORD": "",
+  "MAIL_FROM": "",
+  "MAIL_TO": "",
+  "TEST_MODE": true
+}

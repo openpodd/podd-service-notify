@@ -1,0 +1,9 @@
+{
+  "apps" : [
+    {
+      "name": "broadcast_report",
+      "script": "main",
+      "exec_interpreter": "none"
+    }
+  ]
+}

@@ -1,0 +1,6 @@
+package: .
+import:
+- package: github.com/lib/pq
+- package: github.com/spf13/viper
+- package: gopkg.in/redis.v3
+  version: ^3.0.0
