@@ -1,4 +1,4 @@
-package main
+package fridaynotice
 
 import (
 	"github.com/alexjlockwood/gcm"
@@ -10,8 +10,8 @@ type Sender interface {
 }
 
 type RealSender struct {
-	ApiKey string
-	Http *http.Client
+	ApiKey    string
+	Http      *http.Client
 	GCMSender *gcm.Sender
 }
 
@@ -25,8 +25,8 @@ func NewSender(apiKey string) *RealSender {
 }
 
 type TestSender struct {
-	ApiKey string
-	Http *http.Client
+	ApiKey   string
+	Http     *http.Client
 	ReqCount int
 }
 

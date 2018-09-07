@@ -1,15 +1,15 @@
-package main
+package fridaynotice
 
 import (
 	"database/sql"
+	"fmt"
+	"github.com/alexjlockwood/gcm"
 	_ "github.com/lib/pq"
+	"github.com/openpodd/podd-service-notify"
 	"log"
 	"math/rand"
-	"time"
-	"github.com/alexjlockwood/gcm"
 	"strconv"
-	"fmt"
-	"github.com/openpodd/podd-service-notify"
+	"time"
 )
 
 type DeviceType int
@@ -53,27 +53,40 @@ function submit() {
 </script>
 `
 
-func GetDB() (*sql.DB, error) {
-	return sql.Open("postgres", *dsn)
+type RandomMessengerConfig struct {
+	DSN      string
+	Messages []string
+
+	SharedKey string
+	Nonce     string
+	ReturnUrl string
+
+	ReportButtonEnabled bool
 }
 
-func GetVolunteers(username string) []*User {
+type RandomMessenger struct {
+	DB     *sql.DB
+	Config RandomMessengerConfig
+	Cipher podd_service_notify.Cipher
+}
+
+func (m *RandomMessenger) GetVolunteers(username string) []*User {
 	users := make([]*User, 0)
 
 	queryString := `
-	SELECT username, gcm_reg_id, t.key
-	FROM accounts_user u
-	     join accounts_userdevice d on u.id = d.user_id
-	     join authtoken_token t on u.id = t.user_id
-	WHERE gcm_reg_id != '' AND u.domain_id = 1`
+		SELECT username, gcm_reg_id, t.key
+		FROM accounts_user u
+	    	join accounts_userdevice d on u.id = d.user_id
+	    	join authtoken_token t on u.id = t.user_id
+		WHERE gcm_reg_id != '' AND u.domain_id = 1
+	`
 	if username != "" {
 		queryString += fmt.Sprintf(" AND username = '%s' ", username)
 	} else {
 		queryString += " AND username LIKE 'podd%' "
 	}
 
-	db, _ := GetDB()
-	rows, err := db.Query(queryString)
+	rows, err := m.DB.Query(queryString)
 	if err != nil {
 		log.Printf("Error fetching volunteers %v", err)
 		return users
@@ -91,9 +104,9 @@ func GetVolunteers(username string) []*User {
 
 		users = append(users, &User{
 			Username: username,
-			Token: token,
+			Token:    token,
 			Device: Device{
-				Type: DEVICE_TYPE_ANDROID,
+				Type:  DEVICE_TYPE_ANDROID,
 				RegId: gcmRegId,
 			},
 		})
@@ -102,18 +115,18 @@ func GetVolunteers(username string) []*User {
 	return users
 }
 
-func GetMessage() string {
+func (m *RandomMessenger) GetMessage() string {
 	rand.Seed(time.Now().Unix())
-	return messages[rand.Intn(len(messages))]
+	return m.Config.Messages[rand.Intn(len(m.Config.Messages))]
 }
 
-func MakeRegIdsChunks(users []*User, chunkSize int) [][]string {
+func (m *RandomMessenger) MakeRegIdsChunks(users []*User, chunkSize int) [][]string {
 	var chunks [][]string
 	chunks = make([][]string, 0)
 
 	userSize := len(users)
 	// send chunk of `chunkSize` users
-	for i := 0; i <= userSize / chunkSize; i++ {
+	for i := 0; i <= userSize/chunkSize; i++ {
 		startIndex := chunkSize * i
 		limit := (i + 1) * chunkSize
 		if limit >= userSize {
@@ -132,17 +145,17 @@ func MakeRegIdsChunks(users []*User, chunkSize int) [][]string {
 	return chunks
 }
 
-func SendNotification(sender Sender, regIdsChunks [][]string) {
+func (m *RandomMessenger) SendNotification(sender Sender, regIdsChunks [][]string) {
 	messageId := strconv.Itoa(rand.Int())
-	messageText := GetMessage()
+	messageText := m.GetMessage()
 
 	successCount := 0
 	failCount := 0
-	for _, regIds := range (regIdsChunks) {
+	for _, regIds := range regIdsChunks {
 		data := GCMMessage{
-			"id": messageId,
-			"message": messageText,
-			"type": "news",
+			"id":       messageId,
+			"message":  messageText,
+			"type":     "news",
 			"reportId": "",
 		}
 		message := gcm.NewMessage(data, regIds...)
@@ -165,35 +178,32 @@ func SendNotification(sender Sender, regIdsChunks [][]string) {
 	log.Printf("Successfully sent GCM messages to %d devices, fail %d devices", successCount, failCount)
 }
 
-func CreateGCMMessageTextForUser(user *User) string {
-	cipher := podd_service_notify.Cipher{
-		Key: *sharedKey,
-		Nonce: *nonce,
-	}
+func (m *RandomMessenger) CreateGCMMessageTextForUser(user *User) string {
+	cipher := m.Cipher
 
-	messageText := GetMessage()
+	messageText := m.GetMessage()
 
-	payload, err := podd_service_notify.CreatePayload(user.Token, 0, time.Hour * 24 * 7)
+	payload, err := podd_service_notify.CreatePayload(user.Token, 0, time.Hour*24*7)
 	if err == nil {
 		payloadStr, err := cipher.EncodePayload(payload)
 		if err != nil {
 			log.Printf("Error coding payload for user %s", user.Username)
 			log.Println(err)
-		} else {
-			messageText += fmt.Sprintf(buttonTemplates, *returnServerUrl + "/" + payloadStr)
+		} else if m.Config.ReportButtonEnabled {
+			messageText += fmt.Sprintf(buttonTemplates, m.Config.ReturnUrl+"/"+payloadStr)
 		}
 	}
 
 	return messageText
 }
 
-func SendNotificationToUser(sender Sender, user *User) {
+func (m *RandomMessenger) SendNotificationToUser(sender Sender, user *User) {
 	messageId := user.Username + "-" + strconv.Itoa(rand.Int())
 
 	data := GCMMessage{
-		"id": messageId,
-		"message": CreateGCMMessageTextForUser(user),
-		"type": "news",
+		"id":       messageId,
+		"message":  m.CreateGCMMessageTextForUser(user),
+		"type":     "news",
 		"reportId": "",
 	}
 	regIds := []string{user.Device.RegId}
@@ -206,4 +216,21 @@ func SendNotificationToUser(sender Sender, user *User) {
 	} else {
 		log.Printf("Successfully sent GCM messages to username: %s\n", user.Username)
 	}
+}
+
+func NewRandomMessenger(config RandomMessengerConfig) (*RandomMessenger, error) {
+	db, err := sql.Open("postgres", config.DSN)
+	if err != nil {
+		return nil, err
+	}
+	m := RandomMessenger{
+		DB:     db,
+		Config: config,
+		Cipher: podd_service_notify.Cipher{
+			Key:   config.SharedKey,
+			Nonce: config.Nonce,
+		},
+	}
+
+	return &m, nil
 }
